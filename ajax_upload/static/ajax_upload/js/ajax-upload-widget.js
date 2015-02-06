@@ -5,9 +5,9 @@
 
     var AjaxUploadWidget = global.AjaxUploadWidget = function(element, options) {
         this.options = {
-            changeButtonText: 'Change',
-            removeButtonText: 'Remove',
-            previewAreaClass: 'ajax-upload-preview-area',
+            selectButtonText: 'Change',
+            resetButtonText: 'Remove',
+            previewAreaClass: 'ajax-upload-preview',
             previewFilenameLength: 30,
             onUpload: null, // right before uploading to the server
             onComplete: null,
@@ -28,47 +28,59 @@
 
     AjaxUploadWidget.prototype.initialize = function() {
         var self = this;
-        this.name = this.$element.attr('name');
 
-        // Create a hidden field to contain our uploaded file name
-        this.$hiddenElement = $('<input type="hidden"/>')
-            .attr('name', this.name)
-            .val(this.$element.data('filename'));
-        this.$element.attr('name', ''); // because we don't want to conflict with our hidden field
-        this.$element.after(this.$hiddenElement);
+        // Create foundation row
+        this.$element.wrap('<div class="row collapse versatile"></div>');
 
-        // Initialize preview area and action buttons
-        this.$previewArea = $('<div class="'+this.options.previewAreaClass+'"></div>');
+        // Initialize preview area
+        this.$previewArea = $('<div class="small-12 columns text-center '+this.options.previewAreaClass+'"></div>');
         this.$element.before(this.$previewArea);
+
+        // Create column
+        this.$element.wrap('<div class="small-6 columns versatile-url"></div>');
+
+        // Create url field
+        this.name = this.$element.attr('name');
+        this.$urlElement = $('<input class="file-input-replacer compact urlinput" placeholder="Enter an url or select a file" type="url">')
+        .attr('name', this.name)
+        .val(this.$element.data('filename'));
+        this.$element.attr('name', ''); // because we don't want to conflict with our url field
+        this.$element.after(this.$urlElement);
 
         // Listen for when a file is selected, and perform upload
         this.$element.on('change', function(evt) {
-            self.upload();
+            $(this).next('.file-input-replacer').val(this.value.replace('C:\\fakepath\\', ''));
+            self.uploadFile();
         });
-        this.$changeButton = $('<button type="button" class="btn-change"></button>')
-            .text(this.options.changeButtonText)
-            .on('click', function(evt) {
-                self.$element.show();
-                $(this).hide();
-            });
-        this.$element.after(this.$changeButton);
+        this.$urlElement.on('change', function(evt) {
+            self.sendUrl();
+        });
 
-        this.$removeButton = $('<button type="button" class="btn-remove"></button>')
-            .text(this.options.removeButtonText)
+        // Create select file button
+        this.$selectButton = $('<div class="small-3 columns versatile-file"><a class="postfix button compact file-button-replacer">Select file</a></div>')
             .on('click', function(evt) {
+                $(this).prev('.versatile-url').children('input[type="file"]').trigger('click');
+            });
+        this.$element.parent().after(this.$selectButton);
+
+        // Create reset button
+        this.$resetButton = $('<div class="small-3 columns versatile-reset"><a class="postfix button compact secondary">Reset file</a></div>')
+            .on('click', function(evt) {
+                $(this).prev('.versatile-file').prev('.versatile-url').wrap('<form>').parent('form')[0].reset();
+                $(this).prev('.versatile-file').prev('form').children('.versatile-url').unwrap();
                 if(self.options.onRemove) {
                     var result = self.options.onRemove.call(self);
                     if(result === false) return;
                 }
-                self.$hiddenElement.val('');
+                self.$urlElement.val('');
                 self.displaySelection();
             });
-        this.$changeButton.after(this.$removeButton);
+        this.$selectButton.after(this.$resetButton);
 
         this.displaySelection();
     };
 
-    AjaxUploadWidget.prototype.upload = function() {
+    AjaxUploadWidget.prototype.uploadFile = function() {
         var self = this;
         if(!this.$element.val()) return;
         if(this.options.onUpload) {
@@ -87,6 +99,24 @@
         });
     };
 
+    AjaxUploadWidget.prototype.sendUrl = function() {
+        var self = this;
+        if(!this.$urlElement.val()) return;
+        if(this.options.onUpload) {
+            var result = this.options.onUpload.call(this);
+            if(result === false) return;
+        }
+        this.$element.attr('name', 'file');
+        $.ajax(this.$element.data('upload-url'), {
+            data: {'url': this.$urlElement.val()},
+            type: 'POST',
+            dataType: 'json',
+            success: function(data) { self.uploadDone(data); },
+            error: function(data) { self.uploadFail(data); }
+        });
+        //Dajaxice.ajax_upload.url_download(function(data) { self.uploadDone(data); }, {'url': this.$urlElement.val()}, {'error_callback':  function(data) { self.uploadFail(data); } });
+    };
+
     AjaxUploadWidget.prototype.uploadDone = function(data) {
         // This handles errors as well because iframe transport does not
         // distinguish between 200 response and other errors
@@ -94,11 +124,11 @@
             if(this.options.onError) {
                 this.options.onError.call(this, data);
             } else {
-                console.log('Upload failed:');
+                alert("The file couldn't be uploaded, try again or try reloading the page.");
                 console.log(data);
             }
         } else {
-            this.$hiddenElement.val(data.path);
+            this.$urlElement.val(data.path);
             var tmp = this.$element;
             this.$element = this.$element.clone(true).val('');
             tmp.replaceWith(this.$element);
@@ -111,63 +141,32 @@
         if(this.options.onError) {
             this.options.onError.call(this);
         } else {
-            console.log('Upload failed:');
+            alert("The file couldn't be uploaded, try again or try reloading the page.");
             console.log(xhr);
         }
     };
 
     AjaxUploadWidget.prototype.displaySelection = function() {
-        var filename = this.$hiddenElement.val();
+        var filename = this.$urlElement.val();
 
         if(filename !== '') {
-            this.$previewArea.empty();
             this.$previewArea.append(this.generateFilePreview(filename));
-
             this.$previewArea.show();
-            this.$changeButton.show();
-            if(this.$element.data('required') === 'True') {
-                this.$removeButton.hide();
-            } else {
-                this.$removeButton.show();
-            }
-            this.$element.hide();
         } else {
             this.$previewArea.slideUp();
-            this.$changeButton.hide();
-            this.$removeButton.hide();
-            this.$element.show();
+            this.$previewArea.empty();
         }
     };
 
     AjaxUploadWidget.prototype.generateFilePreview = function(filename) {
-        // Returns the html output for displaying the given uploaded filename to the user.
-        var prettyFilename = this.prettifyFilename(filename);
-        var output = '<a href="'+filename+'" target="_blank">'+prettyFilename+'';
+        output = "";
         $.each(['jpg', 'jpeg', 'png', 'gif'], function(i, ext) {
             if(filename.toLowerCase().slice(-ext.length) == ext) {
-                output += '<img src="'+filename+'"/>';
+                output = '<img src="'+filename+'"/>';
                 return false;
             }
         });
-        output += '</a>';
         return output;
-    };
-
-    AjaxUploadWidget.prototype.prettifyFilename = function(filename) {
-        // Get rid of the folder names
-        var cleaned = filename.slice(filename.lastIndexOf('/')+1);
-
-        // Strip the random hex in the filename inserted by the backend (if present)
-        var re = /^[a-f0-9]{32}\-/i;
-        cleaned = cleaned.replace(re, '');
-
-        // Truncate the filename
-        var maxChars = this.options.previewFilenameLength;
-        var elipsis = '...';
-        if(cleaned.length > maxChars) {
-            cleaned = elipsis + cleaned.slice((-1 * maxChars) + elipsis.length);
-        }
-        return cleaned;
     };
 
     AjaxUploadWidget.autoDiscover = function(options) {

@@ -21,7 +21,6 @@ class AjaxClearableFileInput(forms.ClearableFileInput):
     class Media:
         js = ("ajax_upload/js/jquery.iframe-transport.js",
               "ajax_upload/js/ajax-upload-widget.js",)
-        css = {'all': ('ajax_upload/css/ajax-upload-widget.css',)}
 
     template_with_clear = ''  # We don't need this
     template_with_initial = '%(input)s'
@@ -60,9 +59,9 @@ class AjaxClearableFileInput(forms.ClearableFileInput):
             file_path = data.get(name)
             if not file_path:
                 return False  # False means clear the existing file
-            elif file_path.startswith(settings.MEDIA_URL):
+            if UploadedFile._meta.get_field("file").upload_to in file_path:
                 # Strip and media url to determine the path relative to media url base
-                relative_path = file_path[len(settings.MEDIA_URL):]
+                relative_path = file_path[file_path.find(UploadedFile._meta.get_field("file").upload_to):]
                 relative_path = urllib2.unquote(relative_path.encode('utf8')).decode('utf8')
                 try:
                     uploaded_file = UploadedFile.objects.get(file=relative_path)
