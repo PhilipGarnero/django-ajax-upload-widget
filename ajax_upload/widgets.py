@@ -1,5 +1,5 @@
 import urllib2
-
+import os.path
 
 from django import forms
 from django.conf import settings
@@ -11,7 +11,6 @@ from django.utils.translation import ugettext as _
 
 from ajax_upload.models import UploadedFile
 
-
 class AjaxUploadException(Exception):
     pass
 
@@ -21,6 +20,7 @@ class AjaxClearableFileInput(forms.ClearableFileInput):
     class Media:
         js = ("ajax_upload/js/jquery.iframe-transport.js",
               "ajax_upload/js/ajax-upload-widget.js",)
+        css = {'all': ('ajax_upload/css/ajax-upload-widget.css',)}
 
     template_with_clear = ''  # We don't need this
     template_with_initial = '%(input)s'
@@ -32,8 +32,9 @@ class AjaxClearableFileInput(forms.ClearableFileInput):
 
     def render(self, name, value, attrs=None):
         attrs = attrs or {}
+        print 
         if value:
-            filename = u'%s%s' % (settings.MEDIA_URL, value)
+            filename = u'%s%s' % (UploadedFile._meta.get_field("file").storage.base_url, value)
         else:
             filename = ''
 
@@ -69,7 +70,8 @@ class AjaxClearableFileInput(forms.ClearableFileInput):
                     # Leave the file unchanged (it could be the original file path)
                     return None
                 else:
-                    return File(uploaded_file.file)
-            else:
-                raise AjaxUploadException(u'%s %s' % (_('File path not allowed:'), file_path))
+                    file_obj = File(uploaded_file.file)
+                    file_obj._size = os.path.getsize(uploaded_file.file.path)
+                    file_obj.name = uploaded_file.file.name.split('/')[-1]
+                    return file_obj
         return None

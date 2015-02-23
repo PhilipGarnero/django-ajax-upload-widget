@@ -150,6 +150,7 @@
         var filename = this.$urlElement.val();
 
         if(filename !== '') {
+            this.$previewArea.empty();
             this.$previewArea.append(this.generateFilePreview(filename));
             this.$previewArea.show();
         } else {

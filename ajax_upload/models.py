@@ -17,10 +17,4 @@ class UploadedFile(models.Model):
     def __unicode__(self):
         return unicode(self.file)
 
-    def delete(self, *args, **kwargs):
-        super(UploadedFile, self).delete(*args, **kwargs)
-        if self.file:
-            self.file.delete()
-    delete.alters_data = True
-
 post_delete.connect(secure_file_delete, sender=UploadedFile)

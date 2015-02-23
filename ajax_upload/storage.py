@@ -60,26 +60,26 @@ no_duplicates_media = NoDuplicatesFileSystemStorage()
 def secure_file_delete(sender, instance, **kwargs):
     """Delete a file only if it isn't used by any model"""
     needed_files = []
+    for app in settings.INSTALLED_APPS:
+        app = os.path.splitext(app)[1][1:] if '.' in app else app
+        for model in ContentType.objects.filter(app_label=app):
+            mc = model.model_class()
+            if mc is None:
+                continue
+
+            fields = []
+            for field in mc._meta.fields:
+                if (field.get_internal_type() == 'FileField' or field.get_internal_type() == 'ImageField'):
+                    fields.append(field.name)
+
+            if fields:
+                files = list(chain.from_iterable(mc.objects.all().values_list(*fields)))
+                needed_files.extend(filter(None, files))
+
     for storage_field in (x for x in ContentType.objects.get_for_model(instance).model_class()._meta.fields if (hasattr(x, "storage") and isinstance(x.storage, NoDuplicatesFileSystemStorage))):
         if storage_field:
-            for app in settings.PROJECT_APPS:
-                app = os.path.splitext(app)[1][1:] if '.' in app else app
-                for model in ContentType.objects.filter(app_label=app):
-                    mc = model.model_class()
-                    if mc is None:
-                        continue
-
-                    fields = []
-                    for field in mc._meta.fields:
-                        if (field.get_internal_type() == 'FileField' or field.get_internal_type() == 'ImageField'):
-                            fields.append(field.name)
-
-                    if fields:
-                        files = list(chain.from_iterable(mc.objects.all().values_list(*fields)))
-                        needed_files.extend(filter(None, files))
-
-            if unicode(storage_field) not in needed_files:
-                file = getattr(instance, storage_field.name)
+            file = getattr(instance, storage_field.name)
+            if file.name not in needed_files:
                 file.delete(False)
 
 # You need to place this line under each model using a NoDuplicatesFileSystemStorage 

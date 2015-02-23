@@ -21,8 +21,14 @@ def upload(request):
         form = UploadedFileForm(data=request.POST, files=request.FILES)
         if form.is_valid():
             uploaded_file = form.save()
+            file_url = uploaded_file.file.url
+            try:
+                UploadedFile.objects.get(file=uploaded_file.file)
+            except UploadedFile.MultipleObjectsReturned:
+                uploaded_file.delete()
+
             data = {
-                'path': uploaded_file.file.url,
+                'path': file_url,
             }
             return HttpResponse(json.dumps(data))
         else:
@@ -79,8 +85,14 @@ def upload(request):
             uploaded_file = UploadedFile()
             uploaded_file.file.save(handler.file_name, handler.file_complete(size))
             uploaded_file.save()
+            file_url = uploaded_file.file.url
+            try:
+                UploadedFile.objects.get(file=uploaded_file.file)
+            except UploadedFile.MultipleObjectsReturned:
+                uploaded_file.delete()
+
             data = {
-                'path': uploaded_file.file.url,
+                'path': file_url,
             }
             return HttpResponse(json.dumps(data))
         except Exception:

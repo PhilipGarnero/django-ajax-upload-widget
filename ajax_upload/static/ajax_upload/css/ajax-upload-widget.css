@@ -1,0 +1,20 @@
+.error > .versatile {
+    margin-bottom: 0;
+}
+
+.versatile {
+    margin-bottom: 1rem;
+}
+
+.versatile .ajax-upload-preview {
+    padding: 10px 0 10px 0;
+}
+
+.versatile .ajax-upload-preview img {
+    box-shadow: 5px 5px 10px 0 black;
+}
+
+.versatile .versatile-url .file-input-replacer {
+    position: absolute;
+    top: 0;
+}
