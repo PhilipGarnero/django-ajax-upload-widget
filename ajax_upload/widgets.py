@@ -32,9 +32,11 @@ class AjaxClearableFileInput(forms.ClearableFileInput):
 
     def render(self, name, value, attrs=None):
         attrs = attrs or {}
-        print 
         if value:
-            filename = u'%s%s' % (UploadedFile._meta.get_field("file").storage.base_url, value)
+            if "/" in value.name:
+                filename = u'%s%s' % (UploadedFile._meta.get_field("file").storage.base_url, urllib2.quote(value.name))
+            else:
+                filename = u'%s%s%s' % (UploadedFile._meta.get_field("file").storage.base_url, UploadedFile._meta.get_field("file").upload_to, urllib2.quote(value.name))
         else:
             filename = ''
 
